@@ -20,51 +20,87 @@ with open('scaler.pkl', 'rb') as file:
 
 
 ## streamlit app
-st.title('Customer Churn PRediction')
+st.set_page_config(page_title='Customer Churn Prediction', layout='centered')
+st.markdown(
+    '''
+    <style>
+        .block-container {max-width: 900px; padding-top: 2rem; padding-bottom: 3rem;}
+        .stButton > button {font-weight: 600; min-height: 2.75rem;}
+    </style>
+    ''',
+    unsafe_allow_html=True,
+)
 
-# User input
-geography = st.selectbox('Geography', onehot_encoder_geo.categories_[0])
-gender = st.selectbox('Gender', label_encoder_gender.classes_)
-age = st.slider('Age', 18, 92)
-balance = st.number_input('Balance')
-credit_score = st.number_input('Credit Score')
-estimated_salary = st.number_input('Estimated Salary')
-tenure = st.slider('Tenure', 0, 10)
-num_of_products = st.slider('Number of Products', 1, 4)
-has_cr_card = st.selectbox('Has Credit Card', [0, 1])
-is_active_member = st.selectbox('Is Active Member', [0, 1])
+st.title('Customer Churn Prediction')
+st.caption('Enter the customer details below to estimate churn probability.')
 
-# Prepare the input data
-input_data = pd.DataFrame({
-    'CreditScore': [credit_score],
-    'Gender': [label_encoder_gender.transform([gender])[0]],
-    'Age': [age],
-    'Tenure': [tenure],
-    'Balance': [balance],
-    'NumOfProducts': [num_of_products],
-    'HasCrCard': [has_cr_card],
-    'IsActiveMember': [is_active_member],
-    'EstimatedSalary': [estimated_salary]
-})
+with st.container(border=True):
+    st.subheader('Customer information')
+    customer_col1, customer_col2, customer_col3 = st.columns(3)
+    with customer_col1:
+        geography = st.selectbox('Geography', onehot_encoder_geo.categories_[0])
+    with customer_col2:
+        gender = st.selectbox('Gender', label_encoder_gender.classes_)
+    with customer_col3:
+        age = st.slider('Age', 18, 92)
 
-# One-hot encode 'Geography'
-geo_encoded = onehot_encoder_geo.transform([[geography]]).toarray()
-geo_encoded_df = pd.DataFrame(geo_encoded, columns=onehot_encoder_geo.get_feature_names_out(['Geography']))
+with st.container(border=True):
+    st.subheader('Financial information')
+    financial_col1, financial_col2, financial_col3 = st.columns(3)
+    with financial_col1:
+        credit_score = st.number_input('Credit Score')
+    with financial_col2:
+        balance = st.number_input('Balance')
+    with financial_col3:
+        estimated_salary = st.number_input('Estimated Salary')
 
-# Combine one-hot encoded columns with input data
-input_data = pd.concat([input_data.reset_index(drop=True), geo_encoded_df], axis=1)
+with st.container(border=True):
+    st.subheader('Account information')
+    account_col1, account_col2, account_col3, account_col4 = st.columns(4)
+    with account_col1:
+        tenure = st.slider('Tenure', 0, 10)
+    with account_col2:
+        num_of_products = st.slider('Number of Products', 1, 4)
+    with account_col3:
+        has_cr_card = st.selectbox('Has Credit Card', [0, 1])
+    with account_col4:
+        is_active_member = st.selectbox('Is Active Member', [0, 1])
 
-# Scale the input data
-input_data_scaled = scaler.transform(input_data)
+st.write('')
+predict_clicked = st.button('Predict Churn', type='primary', use_container_width=True)
 
+if predict_clicked:
+    # Prepare the input data
+    input_data = pd.DataFrame({
+        'CreditScore': [credit_score],
+        'Gender': [label_encoder_gender.transform([gender])[0]],
+        'Age': [age],
+        'Tenure': [tenure],
+        'Balance': [balance],
+        'NumOfProducts': [num_of_products],
+        'HasCrCard': [has_cr_card],
+        'IsActiveMember': [is_active_member],
+        'EstimatedSalary': [estimated_salary]
+    })
 
-# Predict churn
-prediction = model.predict(input_data_scaled)
-prediction_proba = prediction[0][0]
+    # One-hot encode 'Geography'
+    geo_encoded = onehot_encoder_geo.transform([[geography]]).toarray()
+    geo_encoded_df = pd.DataFrame(geo_encoded, columns=onehot_encoder_geo.get_feature_names_out(['Geography']))
 
-st.write(f'Churn Probability: {prediction_proba:.2f}')
+    # Combine one-hot encoded columns with input data
+    input_data = pd.concat([input_data.reset_index(drop=True), geo_encoded_df], axis=1)
 
-if prediction_proba > 0.5:
-    st.write('The customer is likely to churn.')
-else:
-    st.write('The customer is not likely to churn.')
+    # Scale the input data
+    input_data_scaled = scaler.transform(input_data)
+
+    # Predict churn
+    prediction = model.predict(input_data_scaled)
+    prediction_proba = prediction[0][0]
+
+    with st.container(border=True):
+        st.subheader('Prediction result')
+        st.metric('Churn Probability', f'{prediction_proba:.2f}')
+        if prediction_proba > 0.5:
+            st.warning('The customer is likely to churn.')
+        else:
+            st.success('The customer is not likely to churn.')
